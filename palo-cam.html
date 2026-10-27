@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Palo Cam</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0d10;color:#eef1f4;font:16px system-ui,sans-serif}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+section{padding:16px;max-width:900px;margin:0 auto}
+section[hidden]{display:none}
+h1{font-size:22px;margin:8px 0 4px}
+p{color:#9aa4ae;margin:4px 0 14px}
+button,input{font:inherit;border-radius:12px;border:0;padding:14px 16px}
+button{background:#1d2630;color:#eef1f4;width:100%;margin:6px 0}
+button.pri{background:#2f7df6}
+input{width:100%;background:#1d2630;color:#fff;text-align:center;letter-spacing:6px;font-size:24px}
+.row{display:flex;gap:10px}
+#tiles{display:flex;flex-wrap:wrap;gap:10px}
+.tile{position:relative;flex:1 1 320px;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden}
+.tile video{width:100%;height:100%;object-fit:cover}
+.grid{position:absolute;inset:0;pointer-events:none;background:
+ linear-gradient(#fff6,#fff6) 33.3% 0/1px 100% no-repeat,
+ linear-gradient(#fff6,#fff6) 66.6% 0/1px 100% no-repeat,
+ linear-gradient(#fff6,#fff6) 0 33.3%/100% 1px no-repeat,
+ linear-gradient(#fff6,#fff6) 0 66.6%/100% 1px no-repeat,
+ linear-gradient(#ff3b30aa,#ff3b30aa) 50% 0/1px 100% no-repeat}
+.grid.off{display:none}
+.lbl{position:absolute;left:8px;top:8px;background:#000a;padding:3px 9px;border-radius:8px;font-size:13px}
+.st{position:absolute;right:8px;top:8px;background:#000a;padding:3px 9px;border-radius:8px;font-size:13px;font-style:normal}
+.st.rec{background:#d92d20}
+#code{font-size:34px;letter-spacing:8px;font-weight:700}
+#timer{font-variant-numeric:tabular-nums}
+#camvid{width:100%;border-radius:12px;background:#000;aspect-ratio:16/9;object-fit:cover}
+#recbadge{font-size:28px;font-weight:700;color:#ff453a;text-align:center;margin:10px 0}
+</style>
+</head>
+<body>
+
+<section id="home">
+  <h1>Palo Cam</h1>
+  <p>Collega tutti i telefoni allo stesso hotspot.</p>
+  <button class="pri" id="bCtrl">Questo è il telecomando</button>
+  <p style="margin-top:22px">Oppure usa questo telefono come camera: inserisci il codice mostrato sul telecomando.</p>
+  <input id="codeIn" inputmode="numeric" maxlength="4" placeholder="0000">
+  <div class="row" style="margin-top:8px">
+    <button id="bA">Camera A</button>
+    <button id="bB">Camera B</button>
+  </div>
+  <p id="homeMsg"></p>
+</section>
+
+<section id="ctrl" hidden>
+  <div class="row" style="align-items:center;justify-content:space-between">
+    <div><p style="margin:0">Codice</p><span id="code">----</span></div>
+    <div style="text-align:right"><p style="margin:0">Durata</p><span id="timer">00:00</span></div>
+  </div>
+  <div id="tiles" style="margin-top:12px"></div>
+  <div class="row" style="margin-top:8px">
+    <button id="bGrid">Griglia on/off</button>
+    <button class="pri" id="bRec">● Avvia registrazione</button>
+  </div>
+  <p id="ctrlMsg">Sulle camere apri questa pagina, scegli Camera A / B e inserisci il codice.</p>
+</section>
+
+<section id="cam" hidden>
+  <h1 id="camTitle">Camera</h1>
+  <video id="camvid" autoplay playsinline muted></video>
+  <div id="recbadge"></div>
+  <p id="camMsg">Connessione…</p>
+  <a id="dl" style="color:#5aa2ff"></a>
+</section>
+
+<script>
+const $=s=>document.querySelector(s);
+const show=id=>document.querySelectorAll('section').forEach(s=>s.hidden=s.id!==id);
+const pid=c=>'palo-'+c;
+const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+
+$('#bCtrl').onclick=startCtrl;
+$('#bA').onclick=()=>startCam('A');
+$('#bB').onclick=()=>startCam('B');
+
+/* ---------- TELECOMANDO ---------- */
+function startCtrl(){
+  show('ctrl');
+  const code=String(Math.floor(1000+Math.random()*9000));
+  $('#code').textContent=code;
+  const peer=new Peer(pid(code));
+  const conns={}, tiles={};
+  $('#tiles').innerHTML='';
+  ['A','B'].forEach(n=>{
+    const d=document.createElement('div');d.className='tile';
+    d.innerHTML='<video autoplay playsinline muted></video><div class="grid"></div><b class="lbl">Cam '+n+'</b><i class="st">in attesa…</i>';
+    $('#tiles').append(d);tiles[n]=d;
+  });
+  const setSt=(n,t,r)=>{const e=tiles[n].querySelector('.st');e.textContent=t;e.classList.toggle('rec',!!r)};
+  peer.on('error',e=>{
+    if(e.type==='unavailable-id'){peer.destroy();startCtrl()}
+    else $('#ctrlMsg').textContent='Errore: '+e.type+' (serve internet via hotspot per il collegamento iniziale)';
+  });
+  peer.on('connection',c=>{
+    const n=c.metadata&&c.metadata.name;if(!tiles[n])return;
+    conns[n]=c;
+    c.on('data',d=>setSt(n,d.st,d.rec));
+    c.on('close',()=>{delete conns[n];setSt(n,'scollegata')});
+  });
+  peer.on('call',call=>{
+    const n=call.metadata&&call.metadata.name;if(!tiles[n])return;
+    call.answer();
+    call.on('stream',s=>{const v=tiles[n].querySelector('video');v.srcObject=s;v.play().catch(()=>{})});
+  });
+  let rec=false,t0=0,iv;
+  $('#bRec').onclick=()=>{
+    rec=!rec;
+    Object.values(conns).forEach(c=>c.send({cmd:rec?'rec':'stop'}));
+    $('#bRec').textContent=rec?'■ Ferma registrazione':'● Avvia registrazione';
+    clearInterval(iv);
+    if(rec){t0=Date.now();iv=setInterval(()=>$('#timer').textContent=fmt(Math.floor((Date.now()-t0)/1000)),500)}
+  };
+  $('#bGrid').onclick=()=>document.querySelectorAll('.grid').forEach(g=>g.classList.toggle('off'));
+}
+
+/* ---------- CAMERA ---------- */
+async function startCam(name){
+  const code=$('#codeIn').value.trim();
+  if(!/^\d{4}$/.test(code)){$('#homeMsg').textContent='Inserisci il codice a 4 cifre.';return}
+  show('cam');$('#camTitle').textContent='Camera '+name;
+  const vc={facingMode:'environment',width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}};
+  let st;
+  try{st=await navigator.mediaDevices.getUserMedia({video:vc,audio:true})}
+  catch(e){try{st=await navigator.mediaDevices.getUserMedia({video:vc})}catch(e2){$('#camMsg').textContent='Camera non accessibile: '+e2.name;return}}
+  $('#camvid').srcObject=st;
+  try{navigator.wakeLock&&navigator.wakeLock.request('screen')}catch(e){}
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)try{navigator.wakeLock.request('screen')}catch(e){}});
+
+  const types=['video/mp4;codecs=avc1,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'';
+  let mr=null,chunks=[],conn,t0=0,iv;
+  const send=o=>{try{conn&&conn.open&&conn.send(o)}catch(e){}};
+
+  function save(){
+    const blob=new Blob(chunks,{type:mime||'video/webm'});
+    const ext=(mime||'webm').includes('mp4')?'mp4':'webm';
+    const url=URL.createObjectURL(blob);
+    const fn='cam'+name+'_'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.'+ext;
+    const a=$('#dl');a.href=url;a.download=fn;a.textContent='Salva video ('+(blob.size/1048576).toFixed(0)+' MB)';
+    a.click();
+    send({st:'salvato '+(blob.size/1048576).toFixed(0)+' MB'});
+    chunks=[];
+  }
+  function onCmd(d){
+    if(d.cmd==='rec'&&!mr){
+      chunks=[];
+      mr=new MediaRecorder(st,mime?{mimeType:mime,videoBitsPerSecond:5e6}:{videoBitsPerSecond:5e6});
+      mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+      mr.onstop=save;
+      mr.start(1000);t0=Date.now();
+      $('#recbadge').textContent='● REC';$('#dl').textContent='';
+      send({st:'REC ●',rec:true});
+      iv=setInterval(()=>{$('#recbadge').textContent='● REC '+fmt(Math.floor((Date.now()-t0)/1000))},500);
+    }else if(d.cmd==='stop'&&mr){
+      const m=mr;mr=null;clearInterval(iv);m.stop();
+      $('#recbadge').textContent='';
+    }
+  }
+  function tune(call){
+    try{call.peerConnection.getSenders().forEach(s=>{
+      if(s.track&&s.track.kind==='video'){
+        const p=s.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];
+        p.encodings[0].maxBitrate=1.2e6;p.encodings[0].scaleResolutionDownBy=2;
+        s.setParameters(p).catch(()=>{});
+      }});}catch(e){}
+  }
+  const peer=new Peer();
+  function link(){
+    if(peer.destroyed)return;
+    conn=peer.connect(pid(code),{metadata:{name}});
+    conn.on('open',()=>{
+      $('#camMsg').textContent='Collegata al telecomando '+code;
+      send({st:'collegata'});
+      const call=peer.call(pid(code),new MediaStream(st.getVideoTracks()),{metadata:{name}});
+      setTimeout(()=>tune(call),1500);
+    });
+    conn.on('data',onCmd);
+    conn.on('close',()=>{$('#camMsg').textContent='Collegamento perso, riprovo…';setTimeout(link,2000)});
+  }
+  peer.on('open',link);
+  peer.on('error',e=>{
+    if(e.type==='peer-unavailable'){$('#camMsg').textContent='Telecomando non trovato, riprovo…';setTimeout(link,2000)}
+    else $('#camMsg').textContent='Errore: '+e.type;
+  });
+}
+</script>
+</body>
+</html>
