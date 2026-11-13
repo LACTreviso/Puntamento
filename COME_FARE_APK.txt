@@ -1,0 +1,36 @@
+GOAL RECORDER COME APP (e come file .apk da mandare alle squadre)
+
+In questa cartella:
+  index.html, manifest.webmanifest, sw.js, icone (icon-*.png, favicon.png, apple-touch-icon.png)
+  .well-known/assetlinks.json  (modello: va completato con i dati che ti da' PWABuilder, passo 3)
+  NB: la cartella .well-known su Windows puo' risultare nascosta perche' inizia col punto.
+
+1) PUBBLICA I FILE
+   Metti TUTTI i file nella stessa cartella online dove oggi c'e' Palo Cam (sostituisci index.html):
+   da questa versione l'app si chiama Goal Recorder, i nuovi video si chiamano GoalRecorder_<data>_<ora>_A.mp4.
+   L'indirizzo deve essere https:// (GitHub Pages, Netlify, Firebase Hosting...).
+
+2) APP SUL TELEFONO (subito, senza file .apk)
+   Apri l'indirizzo con Chrome: nella pagina iniziale compare "Installa Goal Recorder come app"
+   (oppure menu ⋮ > "Installa app"). Chrome crea un'app vera: icona tra le app, schermo intero.
+   Alle altre squadre basta mandare il link.
+
+3) FILE .APK (per mandarlo su WhatsApp o metterlo sul Play Store)
+   Dal PC apri https://www.pwabuilder.com > incolla l'indirizzo di Goal Recorder > Start
+   > "Package For Stores" > Android > "Generate Package".
+   Opzioni consigliate: Package ID it.lact.goalrecorder, App name Goal Recorder, Signing key "New".
+   Scarichi uno zip con:
+     - Goal Recorder.apk ... il file da installare e da mandare alle squadre
+     - .aab ................ solo per il Play Store
+     - signing.keystore + signing-key-info.txt ... CONSERVALI: servono per ogni aggiornamento dell'APK
+     - assetlinks.json ..... caricalo online come https://<tuo-dominio>/.well-known/assetlinks.json
+                             (al dominio principale: cosi' l'app si apre senza barra dell'indirizzo)
+
+4) INSTALLARE L'APK
+   Apri il file sul telefono e consenti "Installa app sconosciute" (per WhatsApp o File).
+   Play Protect puo' avvisare che l'app non viene dal Play Store: "Installa comunque".
+
+Da sapere
+ - L'APK apre la pagina online di Goal Recorder: quando aggiorni index.html sul sito, si aggiornano tutte le app
+   senza rimandare l'APK. Serve Chrome sul telefono (c'e' su tutti gli Android).
+ - Registrazione, anteprima e file restano come oggi (stesso motore di Chrome).
