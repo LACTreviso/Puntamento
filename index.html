@@ -11,7 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Goal Recorder">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script src="peerjs.min.js"></script>
 <style>
 :root{--bg:#0b0d11;--card:#13171e;--card2:#1c222c;--line:#262e3a;--tx:#eef2f7;--mut:#8b97a7;--acc:#3b82f6;--red:#ef4444;--grn:#22c55e;--amb:#f5a524}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -182,6 +182,17 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--acc);height:30px;margin:
 #dim .holdbar i{display:block;height:100%;width:0;background:var(--red)}
 #dim.holding .holdbar i{width:100%;transition:width 2s linear}
 
+/* ---------- GUIDA DI AVVIO ---------- */
+.step{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.step .st{width:30px;height:30px;border-radius:50%;background:var(--card2);display:grid;place-items:center;font-weight:800;flex:none;color:var(--mut)}
+.step .st.ok{background:var(--grn);color:#04210f}
+.step .st.no{background:#3a2a10;color:#ffd79a}
+.step .sx{flex:1;min-width:0}
+.step .sx small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px;line-height:1.35}
+.step button{padding:9px 12px;font-size:13.5px;flex:none}
+.nomore{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--mut);margin-top:12px}
+.nomore input{width:18px;height:18px;accent-color:var(--acc)}
+
 /* ---------- LOGHI DELLA LEGA ---------- */
 .lega{display:inline-grid;place-items:center;background:#fff;border-radius:12px;padding:3px;flex:none}
 .lega img{display:block;width:100%;height:100%;object-fit:contain}
@@ -226,12 +237,12 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--acc);height:30px;margin:
     </div>
 
     <div class="panel">
-      <div class="ph"><div class="ico"><i data-i="remote"></i></div><div><b>Telecomando</b><p class="mut">Il telefono che tieni in mano, quello con l'hotspot.</p></div></div>
-      <button class="pri big" id="bCtrl">Apri il telecomando</button>
+      <div class="ph"><div class="ico"><i data-i="remote"></i></div><div><b>Controller</b><p class="mut">Il telefono che tieni in mano, quello con l'hotspot.</p></div></div>
+      <button class="pri big" id="bCtrl">Apri il controller</button>
     </div>
 
     <div class="panel">
-      <div class="ph"><div class="ico"><i data-i="cam"></i></div><div><b>Camera</b><p class="mut">Sui telefoni montati sul palo. Inserisci il codice mostrato sul telecomando.</p></div></div>
+      <div class="ph"><div class="ico"><i data-i="cam"></i></div><div><b>Camera</b><p class="mut">Sui telefoni montati sul palo. Inserisci il codice mostrato sul controller.</p></div></div>
       <input id="codeIn" class="code-in" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off">
       <div class="seg" id="camSeg"><button data-v="A">Camera A</button><button data-v="B">Camera B</button></div>
       <button class="pri big" id="bCam">Avvia camera</button>
@@ -249,8 +260,8 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--acc);height:30px;margin:
       <li>Tutti i telefoni sullo stesso hotspot, con internet attivo per il primo collegamento.</li>
       <li>Sui telefoni camera la pagina va a schermo intero e in orizzontale: ciò che vedi in anteprima è esattamente ciò che viene registrato.</li>
       <li>Per una partita intera: telefoni in carica (power bank) e all'ombra se possibile.</li>
-      <li>Alza il volume del telecomando: all'avvio emette un beep che serve ad allineare i due video in montaggio.</li>
-      <li>Durante la partita, sul telecomando, tocca <b>Inizio 1T / Inizio 2T</b> al fischio e <b>GOL</b> a ogni gol: le camere salvano gli orari accanto ai video e Goal Extractor taglia le clip da solo.</li>
+      <li>Alza il volume del controller: all'avvio emette un beep che serve ad allineare i due video in montaggio.</li>
+      <li>Durante la partita, sul controller, tocca <b>Inizio 1T / Inizio 2T</b> al fischio e <b>GOL</b> a ogni gol: le camere salvano gli orari accanto ai video e Goal Extractor taglia le clip da solo.</li>
     </ul>
     <div class="legafoot"><span class="lega"><img data-logo="lact" alt=""></span><span>Lega Amatori Calcio Treviso</span></div>
   </div>
@@ -350,6 +361,45 @@ const bph=q=>((QUAL[q]||QUAL.std).br+128e3)/8*3600;
 const NET_ERR=['network','server-error','socket-error','socket-closed'];
 function nextZoom(cur,dir,zc){const s=zc.step||.1;let v=dir>0?cur*1.1:cur/1.1;v=Math.round(v/s)*s;if(Math.abs(v-cur)<s/2)v=cur+dir*s;return Math.min(zc.max,Math.max(zc.min,+v.toFixed(3)))}
 let MODE='home';
+/* App Android "Goal Recorder": la pagina gira dentro l'app (niente sito) e l'app offre: impostazioni del telefono,
+   schermo sempre acceso, video scritti direttamente in Download/GoalRecorder. Nel browser NAT e' null. */
+const NAT=window.GRNative||null;
+const b64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const x=String(r.result),i=x.indexOf(';base64,');res(i>=0?x.slice(i+8):'')};r.onerror=()=>rej(r.error);r.readAsDataURL(blob)});
+function statoRete(){
+  let s={};if(NAT){try{s=JSON.parse(NAT.stato())}catch(e){}}
+  return{aereo:NAT?!!s.aereo:null,wifi:NAT?!!s.wifiConnesso:null,net:NAT?!!s.internet:navigator.onLine,
+         hotspot:NAT&&typeof s.hotspot==='boolean'?s.hotspot:null,info:null};
+}
+/* guida di avvio: camera = modalita' aereo + Wi-Fi sull'hotspot; controller = dati + hotspot */
+function guida(tipo){
+  return new Promise(res=>{
+    if(LS.get('guidaNo_'+tipo,false))return res(true);
+    const cam=tipo==='cam';
+    const passi=cam?[
+      {k:'aereo',t:'Modalità aereo',s:'Così chiamate e notifiche non interrompono la registrazione.',b:'connessioni',bl:'Impostazioni'},
+      {k:'wifi',t:'Wi-Fi acceso, sulla rete del controller',s:'Con la modalità aereo attiva riaccendi il Wi-Fi e scegli l\'hotspot del telefono controller.',b:'wifi',bl:'Wi-Fi'},
+      {k:'net',t:'Internet attivo',s:'Serve per collegare i telefoni: arriva dall\'hotspot del controller.'}]
+     :[
+      {k:'net',t:'Dati mobili accesi',s:'Il controller condivide la sua connessione con le camere.',b:'connessioni',bl:'Impostazioni'},
+      {k:'hotspot',t:'Hotspot attivo',s:'Le camere si collegano al Wi-Fi di questo telefono: nome e password sono nelle impostazioni dell\'hotspot.',b:'hotspot',bl:'Hotspot'},
+      {k:'info',t:'Sulle camere',s:'Modalità aereo, Wi-Fi su questo hotspot, poi “Avvia camera” con il codice che vedrai qui.'}];
+    const d=document.createElement('div');
+    d.innerHTML=`<p class="mut small" style="margin:0 0 6px">${cam?'Prima di montare il telefono sul palo:':'Prima di iniziare:'}</p>`+
+      passi.map((p,i)=>`<div class="step" data-k="${p.k}"><span class="st">${i+1}</span><div class="sx"><b>${p.t}</b><small>${p.s}</small></div>${p.b&&NAT?`<button data-b="${p.b}">${p.bl}</button>`:''}</div>`).join('')+
+      (NAT?'':'<p class="mut small" style="margin:10px 0 0">Modalità aereo, Wi-Fi e hotspot si attivano dal menu rapido del telefono (scorri dall\'alto). Con l\'app Goal Recorder ci sono i pulsanti diretti.</p>')+
+      `<label class="nomore"><input type="checkbox" id="gNo"> Non mostrare più questa guida</label>
+      <div class="btnrow"><button class="c">Annulla</button><button class="pri k">${cam?'Avvia camera':'Apri il controller'}</button></div>`;
+    let fatto=false,timer=null;
+    const fine=v=>{if(fatto)return;fatto=true;clearInterval(timer);if(v&&$('#gNo',d).checked)LS.set('guidaNo_'+tipo,true);res(v)};
+    openSheet(cam?'Prepara la camera':'Prepara il controller',d,()=>fine(false));
+    $$('[data-b]',d).forEach(b=>b.onclick=()=>{try{NAT.apri(b.dataset.b)}catch(e){}});
+    $('.c',d).onclick=closeSheet;
+    $('.k',d).onclick=()=>{fine(true);closeSheet()};
+    const agg=()=>{const s=statoRete();passi.forEach((p,i)=>{const el=$(`.step[data-k="${p.k}"] .st`,d);const v=s[p.k];
+      el.className='st'+(v===true?' ok':v===false?' no':'');el.textContent=v===true?'✓':v===false?'!':String(i+1)})};
+    agg();timer=setInterval(agg,1000);
+  });
+}
 
 const sv=p=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`;
 const I={
@@ -398,7 +448,7 @@ function ask(title,html,ok='OK',kind='pri',cancel='Annulla'){
 }
 
 let WL=null;
-async function keepAwake(){try{if('wakeLock' in navigator&&!document.hidden&&(!WL||WL.released))WL=await navigator.wakeLock.request('screen')}catch(e){}}
+async function keepAwake(){if(NAT){try{NAT.schermoAcceso(true)}catch(e){}return}try{if('wakeLock' in navigator&&!document.hidden&&(!WL||WL.released))WL=await navigator.wakeLock.request('screen')}catch(e){}}
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&MODE!=='home')keepAwake();
   if(MODE==='cam')sendSt();
@@ -429,8 +479,9 @@ function setSeg(seg,v){$$('button',seg).forEach(b=>b.classList.toggle('on',b.dat
 const C={peer:null,code:null,tries:0,cams:{},cfg:Object.assign({q:'std',prev:'low',beep:true},LS.get('cfg',{})),grid:LS.get('grid',true),actx:null,pending:0};
 const newCode=()=>String(Math.floor(1000+Math.random()*9000));
 
-function startCtrl(){
-  if(!window.Peer){toast('Libreria di collegamento non caricata: serve internet','bad');return}
+async function startCtrl(){
+  if(!window.Peer){toast('Libreria di collegamento non caricata','bad');return}
+  if(!await guida('ctrl'))return;
   MODE='ctrl';show('ctrl');history.pushState({pc:1},'');keepAwake();
   document.body.classList.toggle('nogrid',!C.grid);$('#bGrid').classList.toggle('on',C.grid);
   buildTiles();
@@ -634,7 +685,7 @@ async function onRecPress(){
 }
 
 /* ---- PARTITA: orari di inizio tempi, gol e fine (per Goal Extractor) ----
-   Gli orari sono quelli del telecomando, lo stesso orologio che da' il nome ai video (GoalRecorder_<data>_<ora>):
+   Gli orari sono quelli del controller, lo stesso orologio che da' il nome ai video (GoalRecorder_<data>_<ora>):
    per questo Goal Extractor li ritrova nel video al secondo, senza indovinare nulla. */
 let EV=LS.get('ev',null);
 if(!EV||!EV.ev||Date.now()-(EV.agg||0)>8*3600e3)EV={creata:Date.now(),agg:Date.now(),reg:[],ev:[]};
@@ -725,11 +776,13 @@ function openSettings(){
     <p class="mut small" style="margin:0">Vale dalla prossima registrazione. “Alta” rende meglio i movimenti veloci ma occupa più spazio e scalda di più.</p>
     <h4>Anteprima durante la registrazione</h4><div class="seg" id="sP"><button data-v="low">Ridotta<small>10 fps · consigliata</small></button><button data-v="off">In pausa<small>massimo risparmio</small></button></div>
     <h4>Sincronizzazione</h4>
-    <div class="trow"><div><b>Beep all'avvio</b><div class="mut small">Doppio beep dal telecomando subito dopo l'avvio: in montaggio allinei i due video sull'audio.</div></div><button class="sw" id="sB" aria-label="Beep all'avvio"></button></div>
+    <div class="trow"><div><b>Beep all'avvio</b><div class="mut small">Doppio beep dal controller subito dopo l'avvio: in montaggio allinei i due video sull'audio.</div></div><button class="sw" id="sB" aria-label="Beep all'avvio"></button></div>
     <button class="ghost wide" id="sT" style="margin-top:12px">${I.vol}Prova il beep</button>
     <h4>Squadre (facoltativo)</h4>
     <div class="trow" style="gap:8px"><input class="tin" id="sS1" placeholder="Casa" maxlength="24"><input class="tin" id="sS2" placeholder="Ospiti" maxlength="24"></div>
     <p class="mut small" style="margin:6px 0 0">Con i due nomi il pulsante GOL si divide in due (uno per squadra) e Goal Extractor scrive chi ha segnato.</p>
+    <h4>Guide di avvio</h4>
+    <button class="ghost wide" id="sG">Mostra di nuovo le guide (controller e camera)</button>
     <h4>Codice</h4>
     <button class="ghost wide" id="sN">Genera un nuovo codice</button>
     <p class="mut small">Le camere andranno ricollegate inserendo il nuovo codice.</p>`;
@@ -742,6 +795,7 @@ function openSettings(){
   const sq=C.cfg.sq||['',''];$('#sS1',d).value=sq[0]||'';$('#sS2',d).value=sq[1]||'';
   const salvaSq=()=>{C.cfg.sq=[$('#sS1',d).value.trim(),$('#sS2',d).value.trim()];LS.set('cfg',C.cfg);evRender()};
   $('#sS1',d).oninput=salvaSq;$('#sS2',d).oninput=salvaSq;
+  $('#sG',d).onclick=()=>{LS.set('guidaNo_ctrl',false);LS.set('guidaNo_cam',false);toast('Le guide verranno mostrate di nuovo','ok')};
   $('#sN',d).disabled=ctrlAnyRec();
   $('#sN',d).onclick=async()=>{if(!await ask('Nuovo codice?','Le camere collegate dovranno inserire il nuovo codice.','Genera'))return;C.code=newCode();C.tries=0;ctrlConnect()};
   openSheet('Impostazioni',d);
@@ -755,9 +809,10 @@ const K={name:'A',code:'',peer:null,conn:null,call:null,v:null,a:null,stream:nul
 
 async function startCam(){
   const code=$('#codeIn').value.trim();
-  if(!/^\d{4}$/.test(code)){$('#homeMsg').textContent='Inserisci il codice a 4 cifre che vedi sul telecomando.';$('#codeIn').focus();return}
+  if(!/^\d{4}$/.test(code)){$('#homeMsg').textContent='Inserisci il codice a 4 cifre che vedi sul controller.';$('#codeIn').focus();return}
   if(!window.Peer){$('#homeMsg').textContent='Libreria di collegamento non caricata: controlla internet e ricarica.';return}
   K.name=$('#camSeg').dataset.v==='B'?'B':'A';K.code=code;LS.set('camCode',code);LS.set('camName',K.name);
+  if(!await guida('cam'))return;
   goLandscape();
   MODE='cam';show('cam');history.pushState({pc:1},'');keepAwake();
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
@@ -771,6 +826,7 @@ async function startCam(){
   setInterval(camTick,1000);
 }
 function goLandscape(){
+  if(NAT){try{NAT.orizzontale(true)}catch(e){}return}
   const lock=()=>{try{screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})}catch(e){}};
   try{const el=document.documentElement;if(el.requestFullscreen&&!document.fullscreenElement)el.requestFullscreen({navigationUI:'hide'}).then(lock).catch(()=>{});else lock()}catch(e){}
 }
@@ -900,7 +956,7 @@ function camConnect(){
   p.on('open',link);
   p.on('disconnected',()=>setTimeout(()=>{if(!p.destroyed&&p.disconnected){try{p.reconnect()}catch(e){}}},2000));
   p.on('error',e=>{
-    if(e.type==='peer-unavailable'){linkState('wait','Telecomando '+K.code+' non trovato, riprovo…');relinkSoon(2500)}
+    if(e.type==='peer-unavailable'){linkState('wait','Controller '+K.code+' non trovato, riprovo…');relinkSoon(2500)}
     else if(NET_ERR.includes(e.type)){
       if(!(K.conn&&K.conn.open))linkState('err','Server non raggiungibile (internet sull\'hotspot?), riprovo…');
       setTimeout(()=>{if(p.destroyed)camConnect();else if(p.disconnected){try{p.reconnect()}catch(_){}}},4000);
@@ -913,12 +969,12 @@ function link(){
   const p=K.peer;if(!p||p.destroyed)return;
   if(p.disconnected||!p.open){relinkSoon(2000);return}
   if(K.conn){const o=K.conn;K.conn=null;try{o.close()}catch(e){}}
-  linkState('wait','Collegamento al telecomando '+K.code+'…');
+  linkState('wait','Collegamento al controller '+K.code+'…');
   const c=p.connect(pid(K.code),{metadata:{name:K.name},reliable:true});K.conn=c;
   const to=setTimeout(()=>{if(K.conn===c&&!c.open){try{c.close()}catch(e){}relinkSoon(500)}},10000);
   c.on('open',()=>{
     clearTimeout(to);if(K.conn!==c)return;
-    K.lastPong=Date.now();K.samples=[];linkState('ok','Collegata al telecomando');
+    K.lastPong=Date.now();K.samples=[];linkState('ok','Collegata al controller');
     for(let i=0;i<6;i++)setTimeout(()=>camSend({t:'ping',a:Date.now()}),i*250);
     sendSt();remakeCall();
   });
@@ -940,10 +996,11 @@ function onCtrlData(d){
   else if(d.t==='cfg')applyCfg(d);
   else if(d.t==='ev')salvaEventi(d.nome,d.json);
 }
-/* il telecomando manda gli orari della partita: la camera li tiene in un file accanto ai video */
+/* il controller manda gli orari della partita: la camera li tiene in un file accanto ai video */
 let evQ=Promise.resolve();
 function salvaEventi(nome,json){
   if(!/^[\w.-]+_eventi\.json$/.test(nome||''))return;
+  if(NAT){try{NAT.salvaTesto(nome,json)}catch(e){}refreshFilesN();return}
   evQ=evQ.then(async()=>{
     try{const dir=await opfsDir();const fh=await dir.getFileHandle(nome,{create:true});const w=await fh.createWritable();await w.write(json);await w.close()}
     catch(e){const i=MEMFILES.findIndex(m=>m.name===nome);const m={name:nome,blob:new Blob([json],{type:'application/json'}),date:Date.now()};if(i>=0)MEMFILES[i]=m;else MEMFILES.push(m)}
@@ -988,14 +1045,14 @@ function camTick(){
   const now=Date.now();
   if(K.conn&&K.conn.open){
     if(now-K.lastPing>=3000){K.lastPing=now;camSend({t:'ping',a:now})}
-    if(now-K.lastPong>10000){linkState('wait','Il telecomando non risponde, ricollego…');link()}
+    if(now-K.lastPong>10000){linkState('wait','Il controller non risponde, ricollego…');link()}
     else if(now-K.lastSt>=(K.R?1000:3000))sendSt();
   }
   if(++K.tick%30===0)updFree();
   updCamUI();
 }
 function initBattery(){try{navigator.getBattery&&navigator.getBattery().then(b=>{K.batt=b;b.onlevelchange=b.onchargingchange=()=>{updCamUI();sendSt()}}).catch(()=>{})}catch(e){}}
-function updFree(){try{navigator.storage&&navigator.storage.estimate&&navigator.storage.estimate().then(e=>{K.free=Math.max(0,(e.quota||0)-(e.usage||0))}).catch(()=>{})}catch(e){}}
+function updFree(){if(NAT){try{K.free=NAT.spazioLibero()}catch(e){}return}try{navigator.storage&&navigator.storage.estimate&&navigator.storage.estimate().then(e=>{K.free=Math.max(0,(e.quota||0)-(e.usage||0))}).catch(()=>{})}catch(e){}}
 
 function updCamUI(){
   if(MODE!=='cam')return;
@@ -1025,6 +1082,7 @@ function updCamUI(){
   if(w&&h>w)warns.push('Il video è verticale: tocca “Orizzontale” oppure attiva la rotazione automatica e gira il telefono.');
   if(K.v&&!K.a)warns.push('Microfono non disponibile: il video sarà senza audio (niente beep di sincronizzazione).');
   if(K.err&&now<K.errUntil)warns.push(K.err);
+  if(NAT&&!statoRete().aereo)warns.push('Modalità aereo spenta: una chiamata può interrompere la registrazione.');
   const wb=$('#camWarn'),wh=warns.map(esc).join('<br>');wb.hidden=!warns.length;if(wb._h!==wh){wb.innerHTML=wh;wb._h=wh}
   $('#camFs').hidden=!!document.fullscreenElement||!document.documentElement.requestFullscreen;
 }
@@ -1048,6 +1106,17 @@ function worker(){
 const wcall=m=>new Promise((res,rej)=>{const id=++wid;wcb[id]=d=>d.err?rej(new Error(d.err)):res(d);worker().postMessage(Object.assign({},m,{id}))});
 const MEMFILES=[];
 async function openWriter(name,type){
+  if(NAT){
+    try{
+      const id=NAT.fileApri(name,type);
+      if(id>0){
+        let chain=Promise.resolve();
+        return{kind:'native',
+          write:b=>{chain=chain.then(()=>b64(b)).then(x=>{if(NAT.fileScrivi(id,x)<0)onWriteErr('scrittura nella cartella Download non riuscita')}).catch(()=>{})},
+          close:async()=>{await chain;return NAT.fileChiudi(id)}};
+      }
+    }catch(e){}
+  }
   try{
     if(!navigator.storage||!navigator.storage.getDirectory||!window.Worker)throw new Error('OPFS assente');
     await wcall({op:'open',name});
@@ -1126,11 +1195,24 @@ async function listFiles(){
     }
   }catch(e){}
   MEMFILES.forEach(m=>out.push({name:m.name,size:m.blob.size,date:m.date,mem:m}));
+  if(NAT){try{JSON.parse(NAT.elenco()).forEach(f=>out.push({name:f.nome,size:f.dim,date:f.data,nat:String(f.id),busy:false}))}catch(e){}}
   return out.sort((a,b)=>b.date-a.date);
 }
 async function refreshFilesN(){let n=0;try{n=(await listFiles()).length}catch(e){}$('#camFilesN').textContent=n?'('+n+')':'';const h=$('#bFilesHome span');if(h)h.textContent='Video salvati su questo telefono'+(n?' ('+n+')':'')}
 async function getBlob(it){return it.mem?it.mem.blob:await it.h.getFile()}
 async function saveFile(it){
+  if(it.nat){toast('È già salvato in '+NAT.cartella()+' (lo vedi anche in Galleria e nell\'app File)','ok');return}
+  if(NAT){
+    try{
+      const f=await getBlob(it),id=NAT.fileApri(it.name,f.type||'video/mp4');if(id<=0)throw new Error('cartella non disponibile');
+      toast('Copio in '+NAT.cartella()+'…');
+      for(let o=0;o<f.size;o+=4<<20){if(NAT.fileScrivi(id,await b64(f.slice(o,o+(4<<20))))<0)throw new Error('scrittura')}
+      NAT.fileChiudi(id);toast('Salvato in '+NAT.cartella(),'ok');
+      const s=LS.get('saved',[]);if(!s.includes(it.name)){s.push(it.name);LS.set('saved',s.slice(-50))}
+    }catch(e){toast('Salvataggio non riuscito: '+e.message,'bad')}
+    return;
+  }
+  if(!navigator.onLine&&!await ask('Sei senza rete','Il video è al sicuro su questo telefono: non si perde. Il salvataggio in Download di solito funziona anche senza rete; se non parte, collegati a una rete (anche l\'hotspot) e riprova da qui.','Salva lo stesso')){openFiles();return}
   try{
     const f=await getBlob(it),url=URL.createObjectURL(f),a=document.createElement('a');
     a.href=url;a.download=it.name;document.body.append(a);a.click();a.remove();
@@ -1139,6 +1221,7 @@ async function saveFile(it){
   }catch(e){toast('Download non riuscito: '+e.message,'bad')}
 }
 async function shareFile(it){
+  if(it.nat){if(!NAT.condividi(it.nat))toast('Condivisione non disponibile: il file è in '+NAT.cartella(),'bad');return}
   try{
     const f=await getBlob(it),file=f instanceof File?f:new File([f],it.name,{type:f.type});
     if(navigator.canShare&&!navigator.canShare({files:[file]}))throw new Error('x');
@@ -1147,12 +1230,14 @@ async function shareFile(it){
 }
 async function delFile(it){
   if(!await ask('Eliminare il video?','<b>'+esc(it.name)+'</b> verrà cancellato da questo telefono. Assicurati di averlo già salvato.','Elimina','red')){openFiles();return}
-  try{if(it.mem)MEMFILES.splice(MEMFILES.indexOf(it.mem),1);else await(await opfsDir()).removeEntry(it.name);toast('Video eliminato')}catch(e){toast('Eliminazione non riuscita','bad')}
+  try{if(it.nat){if(!NAT.elimina(it.nat))throw new Error('x')}else if(it.mem)MEMFILES.splice(MEMFILES.indexOf(it.mem),1);else await(await opfsDir()).removeEntry(it.name);toast('Eliminato')}
+  catch(e){toast(it.nat?'Non riesco a eliminarlo: fallo dall\'app File, cartella '+NAT.cartella():'Eliminazione non riuscita','bad')}
   refreshFilesN();openFiles();
 }
 async function openFiles(){
   const d=document.createElement('div');
-  d.innerHTML=`<p class="mut small" style="margin:0">I video vengono scritti nella memoria del browser mentre registri, così non si perdono se la pagina si chiude. Tocca <b>Salva</b> per copiarli in Download, poi <b>Elimina</b> per liberare spazio. Il file <b>…_eventi.json</b> contiene gli orari di inizio tempi e gol: salvalo insieme ai video.</p><div class="flist"><p class="empty">Caricamento…</p></div>`;
+  d.innerHTML=NAT?`<p class="mut small" style="margin:0">I video vengono scritti direttamente nella cartella <b>${esc(NAT.cartella())}</b> del telefono mentre registri: non serve scaricarli. Collegando il telefono al PC li trovi lì, insieme al file degli orari (…_eventi.json) per Goal Extractor.</p><div class="flist"><p class="empty">Caricamento…</p></div>`
+   :`<p class="mut small" style="margin:0">I video vengono scritti nella memoria del browser mentre registri, così non si perdono se la pagina si chiude. Tocca <b>Salva</b> per copiarli in Download, poi <b>Elimina</b> per liberare spazio. Il file <b>…_eventi.json</b> contiene gli orari di inizio tempi e gol: salvalo insieme ai video.</p><div class="flist"><p class="empty">Caricamento…</p></div>`;
   openSheet('Video salvati',d);
   const L=await listFiles(),box=$('.flist',d),saved=LS.get('saved',[]);
   box.innerHTML='';
@@ -1161,7 +1246,7 @@ async function openFiles(){
     const r=document.createElement('div');r.className='frow';
     const when=new Date(it.date).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     r.innerHTML=`<div class="fi"><b>${esc(it.name)}</b><span class="mut">${gb(it.size)} · ${when}${it.busy?' · <span style="color:#ff6b6b">in registrazione</span>':''}${saved.includes(it.name)?' · <span class="okk">salvato</span>':''}${it.mem?' · solo in RAM':''}</span></div>
-      <div class="fa"><button class="pri" data-a="s">${I.dl}Salva</button>${navigator.share?`<button data-a="c" aria-label="Condividi">${I.share}</button>`:''}<button class="danger" data-a="d" aria-label="Elimina">${I.trash}</button></div>`;
+      <div class="fa">${it.nat?`<button data-a="s" title="Già nella cartella ${esc(NAT.cartella())}">✓ Salvato</button>`:`<button class="pri" data-a="s">${I.dl}Salva</button>`}${navigator.share||it.nat?`<button data-a="c" aria-label="Condividi">${I.share}</button>`:''}<button class="danger" data-a="d" aria-label="Elimina">${I.trash}</button></div>`;
     $$('button',r).forEach(b=>{b.disabled=it.busy;b.onclick=()=>({s:saveFile,c:shareFile,d:delFile})[b.dataset.a](it)});
     box.append(r);
   });
@@ -1177,12 +1262,12 @@ async function openFiles(){
   $('#bCtrl').onclick=startCtrl;$('#bCam').onclick=startCam;$('#bFilesHome').onclick=openFiles;
   refreshFilesN();
   /* app installabile: service worker + pulsante "Installa" quando Chrome lo permette */
-  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if(!NAT&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
   let instEv=null;
-  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEv=e;$('#pInst').hidden=false});
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();if(NAT)return;instEv=e;$('#pInst').hidden=false});
   window.addEventListener('appinstalled',()=>{$('#pInst').hidden=true;toast('Goal Recorder installata: la trovi tra le app','ok')});
   $('#bInst').onclick=async()=>{if(!instEv)return;instEv.prompt();try{await instEv.userChoice}catch(e){}instEv=null;$('#pInst').hidden=true};
-  if(!window.Peer)$('#homeMsg').textContent='Libreria di collegamento non caricata: controlla la connessione internet e ricarica.';
+  if(!window.Peer)$('#homeMsg').textContent='Libreria di collegamento non caricata: ricarica la pagina.';
 })();
 </script>
 </body>

@@ -1,8 +1,8 @@
 /* Goal Recorder - service worker: l'app si installa come app vera e si apre anche con rete scarsa.
    Pagina: prima la rete (cosi' gli aggiornamenti arrivano subito), se manca la rete la copia salvata.
    Non tocca nient'altro (collegamento tra telefoni, video, download). */
-const VER = 'goalrecorder-v3';
-const FILE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './favicon.png'];
+const VER = 'goalrecorder-v5';
+const FILE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './favicon.png', './peerjs.min.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VER).then(c => c.addAll(FILE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== VER).map(x => caches.delete(x)))).then(() => self.clients.claim()));
