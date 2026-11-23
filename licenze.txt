@@ -3,7 +3,15 @@
 // (Firebase > Impostazioni progetto > Le tue app > app Web) e salva ("Commit changes").
 // Non c'e' niente di segreto: chi puo' fare cosa lo decidono le regole di Firestore.
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "INCOLLA_QUI",
-  projectId: "INCOLLA_QUI",
+  apiKey: "AIzaSyBGOnIoNJ6eiUsSRxPRrPM3Tf56Ams9eoE",
+  authDomain: "lact-licenze.firebaseapp.com",
+  projectId: "lact-licenze",
+  storageBucket: "lact-licenze.firebasestorage.app",
+  messagingSenderId: "762635742776",
+  appId: "1:762635742776:web:a87180cbc945c1e0be00cd"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
