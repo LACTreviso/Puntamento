@@ -1,0 +1,9 @@
+// Collegamento alle chiavi della lega: Goal Extractor, Goal Recorder e il pannello leggono da qui il progetto Firebase.
+// Incolla al posto delle righe qui sotto il blocco firebaseConfig del progetto lact-licenze
+// (Firebase > Impostazioni progetto > Le tue app > app Web) e salva ("Commit changes").
+// Non c'e' niente di segreto: chi puo' fare cosa lo decidono le regole di Firestore.
+
+const firebaseConfig = {
+  apiKey: "INCOLLA_QUI",
+  projectId: "INCOLLA_QUI",
+};
